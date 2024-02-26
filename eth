@@ -1,0 +1,60 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract ResourceManager {
+    address public owner;
+    uint256 public totalResources;
+    uint256 public totalRewards;
+    mapping(address => uint256) public resources;
+    mapping(address => uint256) public rewards;
+
+    event ResourceAdded(address indexed user, uint256 amount);
+    event ResourceRemoved(address indexed user, uint256 amount);
+    event RewardClaimed(address indexed user, uint256 amount);
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Only owner can call this function");
+        _;
+    }
+
+    constructor() {
+        owner = msg.sender;
+    }
+
+    function addResources(uint256 _amount) external {
+        require(_amount > 0, "Amount must be greater than 0");
+        totalResources += _amount;
+        resources[msg.sender] += _amount;
+        emit ResourceAdded(msg.sender, _amount);
+    }
+
+    function removeResources(uint256 _amount) external {
+        require(_amount > 0 && resources[msg.sender] >= _amount, "Insufficient resources");
+        totalResources -= _amount;
+        resources[msg.sender] -= _amount;
+        emit ResourceRemoved(msg.sender, _amount);
+    }
+
+    function claimReward() external {
+        uint256 reward = calculateReward(msg.sender);
+        rewards[msg.sender] += reward;
+        totalRewards += reward;
+        emit RewardClaimed(msg.sender, reward);
+    }
+
+    function calculateReward(address _user) public view returns (uint256) {
+        return (rewards[_user] * resources[_user]) / totalResources;
+    }
+
+    function withdrawRewards() external {
+        uint256 reward = rewards[msg.sender];
+        require(reward > 0, "No rewards to withdraw");
+        rewards[msg.sender] = 0;
+        totalRewards -= reward;
+        payable(msg.sender).transfer(reward);
+    }
+
+    function changeOwner(address _newOwner) external onlyOwner {
+        owner = _newOwner;
+    }
+}
